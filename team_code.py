@@ -139,7 +139,7 @@ def train_models(data_folder, model_folder, verbose):
     # Initialize a model
     classification_model = PhysionetCNN(LIST_OF_ALL_LABELS).to(DEVICE)
     classification_model.load_state_dict(
-        torch.load("base_model/classification_model.pth", weights_only=False))
+        torch.load("base_model/classification_model.pth", map_location=torch.device('cpu'),weights_only=False))
     classification_model.train()
 
     for param in classification_model.parameters():  # fine tune all the layers
