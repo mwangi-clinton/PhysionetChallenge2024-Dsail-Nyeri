@@ -64,24 +64,33 @@ SCHEDULER_GAMMA=0.5
 
 
 class PhysionetCNN(nn.Module):
-  def __init__(self, list_of_classes):
-      super(PhysionetCNN, self).__init__()
-      self.list_of_classes = list_of_classes
-      self.num_classes = len(self.list_of_classes)
+    def __init__(self, list_of_classes):
+        super(PhysionetCNN, self).__init__()
+        self.list_of_classes = list_of_classes
+        self.num_classes = len(self.list_of_classes)
         # Load the pre-trained EfficientNetB5 model
-      self.model = timm.create_model('efficientnet_b5', pretrained=False)
-      self.model = nn.Sequential(*list(self.model.children())[:-2])
-      self.classifier = nn.Sequential(
-        nn.AdaptiveAvgPool2d(1),
-        nn.Flatten(),
-        nn.Linear(2048, self.num_classes),
-        nn.Sigmoid()
-      )
+        self.model = timm.create_model('efficientnet_b5', pretrained=False)
+        self.model = nn.Sequential(*list(self.model.children())[:-2])
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(2048, self.num_classes),
+            nn.Sigmoid()
+        )
 
-  def forward(self, x):
-    x = self.model(x)
-    x = self.classifier(x)
-    return x
+        # Freeze the first layers of the EfficientNetB5 backbone
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        # Unfreeze the last few layers (optional: adjust as needed)
+        for param in list(self.model[-1].parameters()):
+            param.requires_grad = True
+
+    def forward(self, x):
+        x = self.model(x)
+        x = self.classifier(x)
+        return x
+
     
 def train_models(data_folder, model_folder, verbose):
     # Find the data files.
@@ -139,7 +148,8 @@ def train_models(data_folder, model_folder, verbose):
     # Initialize a model
     classification_model = PhysionetCNN(LIST_OF_ALL_LABELS).to(DEVICE)
     classification_model.load_state_dict(
-        torch.load("base_model/classification_model.pth", map_location=torch.device('cpu'),weights_only=False))
+        torch.load("base_model/classification_model.pth", weights_only=False))
+    
     classification_model.train()
 
     for param in classification_model.parameters():  # fine tune all the layers
